@@ -26,17 +26,21 @@ async function loadTargetMonth() {
     if (window.loadFromFirebase) {
         const data = await window.loadFromFirebase(year, month);
         
+        // 在 loadTargetMonth 裡面的 data 注入區塊改寫：
         if (data) {
-            console.log("✅ 抓到雲端資料，正在注入系統...", data);
+            console.log("✅ 抓到雲端資料", data);
             
-            // 🔥 [關鍵就在這] 把雲端的東西塞進變數，這樣重整才不會消失
+            // 💡 確保這些全域變數都被正確更新
             schedule = data.schedule || {};
             activeNurses = data.activeNurses || [];
-            leaves = data.leaves || [];               // 👈 預假同步關鍵
-            window.lockedCells = data.lockedCells || []; // 👈 鎖定同步關鍵
-            window.currentDeadline = data.deadline || ""; // 👈 放大版 Deadline 置前用
             
-            // 如果雲端有存人員名單，也一併更新
+            // 🔥 GitHub 版最保險的寫法：
+            window.leaves = data.leaves || []; 
+            leaves = window.leaves; 
+            
+            window.lockedCells = data.lockedCells || [];
+            window.currentDeadline = data.deadline || "";
+            
             if (data.pool) pool = data.pool;
         } else {
             // 如果這月份沒資料，清空現有班表
@@ -1039,35 +1043,31 @@ async function toggleLeave(key) {
 }
 
 async function toggleMode() {
-    // 1. 切換模式狀態
     isLeaveMode = !isLeaveMode; 
     
-    // 2. 更新按鈕文字
     const btn = document.getElementById('mode-btn');
-    btn.innerText = isLeaveMode ? "完成預假" : "進入預假模式";
+    if (btn) btn.innerText = isLeaveMode ? "完成預假" : "進入預假模式";
 
-    // 3. 🔥【關鍵】當使用者點擊「完成預假」時，立刻同步到雲端
-    if (!isLeaveMode) { // 如果現在是從預假模式「退出」
+    if (!isLeaveMode) { 
         console.log("正在同步預假資料至雲端...");
         
         const year = document.getElementById('set-year').value;
         const month = document.getElementById('set-month').value;
 
+        // 🔥 [修正] 這裡要直接抓全域變數，並確保 leaves 不是 undefined
         if (window.saveToFirebase) {
             const allData = {
                 schedule: schedule,
                 activeNurses: activeNurses,
                 pool: pool,
-                leaves: leaves,          // 確保這份清單被送出去
+                leaves: leaves || [], // 確保不為空
                 lockedCells: window.lockedCells || [],
                 deadline: window.currentDeadline || ""
             };
             await window.saveToFirebase(allData, year, month);
-            console.log("✅ 預假資料同步完成");
+            alert("預假資料已同步至雲端！"); // 加上提示才知道 GitHub 有跑完
         }
     }
-
-    // 4. 重新渲染畫面
     renderTable(); 
 }
 
