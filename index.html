@@ -233,17 +233,15 @@
       
         window.loadFromFirebase = async function() {
             try {
+                // 確保路徑與你 save 時一模一樣
                 const docRef = doc(db, "NurseSchedule", "current");
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
-                    console.log("從雲端抓到資料了！", docSnap.data());
                     return docSnap.data();
-                } else {
-                    console.log("雲端沒有資料。");
-                    return null;
                 }
+                return null;
             } catch (e) {
-                console.error("讀取失敗:", e);
+                console.error("Firebase 讀取報錯:", e);
                 return null;
             }
         };
