@@ -221,19 +221,31 @@
       
         // 將 Firebase 功能掛載到全域 window 物件，讓 script.js 可以使用
         window.saveToFirebase = async function(allData) {
-    try {
-        // 確保這裡的集合名稱 "NurseSchedule" 與您在 Firebase 後台建立的一致
-        // 我們將文件 ID 設為 "current"，代表永遠覆蓋成最新狀態
-        await setDoc(doc(db, "NurseSchedule", "current"), allData);
-        // 移除 console.log，讓操作無感
-    } catch (e) {
-        console.error("Firebase 同步錯誤:", e);
-    }
-};
+            try {
+                // 第一個參數是 db，第二個是 "集合名稱"，第三個是 "文件名稱"
+                // 確保這裡寫的是 "NurseSchedule"，不是其他的
+                await setDoc(doc(db, "NurseSchedule", "current"), allData);
+                console.log("資料已傳送至 NurseSchedule 集合"); 
+            } catch (e) {
+                console.error("傳送發生錯誤:", e);
+            }
+        };
       
         window.loadFromFirebase = async function() {
-          const docSnap = await getDoc(doc(db, "schedules", "current"));
-          return docSnap.exists() ? docSnap.data() : null;
+            try {
+                const docRef = doc(db, "NurseSchedule", "current");
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    console.log("從雲端抓到資料了！", docSnap.data());
+                    return docSnap.data();
+                } else {
+                    console.log("雲端沒有資料。");
+                    return null;
+                }
+            } catch (e) {
+                console.error("讀取失敗:", e);
+                return null;
+            }
         };
       </script>
 </body>
