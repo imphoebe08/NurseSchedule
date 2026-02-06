@@ -52,37 +52,57 @@ async function loadTargetMonth() {
 
 // 2. 初始化函式
 async function init() {
+    console.log("🚀 系統啟動，正在主動抓取全域與月份資料...");
     const yEl = document.getElementById('set-year');
     const mEl = document.getElementById('set-month');
+    const now = new Date();
 
-    // 1. 恢復上次停留的月份
-    const savedYear = localStorage.getItem('stay_year');
-    const savedMonth = localStorage.getItem('stay_month');
+    // A. 恢復上次停留位置 (記憶功能)
+    yEl.value = localStorage.getItem('stay_year') || now.getFullYear();
+    mEl.value = localStorage.getItem('stay_month') || (now.getDate() >= 21 ? now.getMonth() + 2 : now.getMonth() + 1);
 
-    if (savedYear && savedMonth) {
-        yEl.value = savedYear;
-        mEl.value = savedMonth;
-    }
-
-    // 2. 🔥 強制等待 Firebase 載入 (防呆機制)
-    let retry = 0;
-    while (typeof window.loadFromFirebase !== 'function' && retry < 20) {
+    // B. 強制等待 SDK 就緒
+    while (typeof window.loadGlobalNurses !== 'function') {
         await new Promise(r => setTimeout(r, 200));
-        retry++;
     }
 
-    // 3. 綁定監聽 (放在讀取之前)
-    yEl.onchange = loadTargetMonth;
-    mEl.onchange = loadTargetMonth;
+    // C. 🔥 主動發動：合併讀取人員與班表
+    await refreshData();
 
-    // 4. 🔥 主動發動第一次讀取
-    await loadTargetMonth();
-
-    // 5. 其他視覺與互動規範
+    // D. 綁定選單改動
+    yEl.onchange = refreshData;
+    mEl.onchange = refreshData;
+    
+    // 其他 UI 綁定
     if (typeof bindCheckboxSingleSelect === 'function') {
         bindCheckboxSingleSelect('.role-checkbox-new');
-        bindCheckboxSingleSelect('.role-checkbox-edit');
     }
+}
+
+async function refreshData() {
+    const year = document.getElementById('set-year').value;
+    const month = document.getElementById('set-month').value;
+    localStorage.setItem('stay_year', year);
+    localStorage.setItem('stay_month', month);
+
+    // 同時去兩個抽屜拿資料
+    const [globalNurses, monthlyData] = await Promise.all([
+        window.loadGlobalNurses(),
+        window.loadMonthlyData(year, month)
+    ]);
+
+    // 💡 困境解決：不管哪個月，人都從全域名單來
+    activeNurses = globalNurses || [];
+    
+    // 班表與排班池從當月資料拿
+    schedule = monthlyData ? (monthlyData.schedule || {}) : {};
+    pool = monthlyData ? (monthlyData.pool || []) : [];
+
+    // 渲染畫面：維持純黑文字、Deadline 放大置前、#353866 按鈕
+    initDates();
+    renderPool();
+    renderTable();
+    console.log(`✅ ${year}_${month} 資料載入完成`);
 }
 
 // 同時修改 initDates，讓它在每次日期變動時記住當下位置
@@ -1113,33 +1133,58 @@ function exportSchedule() {
 /**
  * 匯入班表：讀取檔案並恢復所有設定
  */
-function importSchedule(event) {
+async function importSchedule(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         try {
             const data = JSON.parse(e.target.result);
             
             if (confirm('匯入將會覆蓋目前的班表，確定嗎？')) {
-                // 恢復所有變數
+                // 1. 先更新當前網頁的變數
                 schedule = data.schedule || {};
-                leaves = data.leaves || [];
-                window.lockedCells = data.lockedCells || [];
                 activeNurses = data.activeNurses || [];
-                
-                // 儲存到本地端並重新渲染
-                save();
+                pool = data.pool || [];
+                // 如果你的資料裡有 deadline，也把它帶進來
+                window.currentDeadline = data.deadline || ""; 
+
+                // 2. 取得目前的年份月份
+                const year = document.getElementById('set-year').value;
+                const month = document.getElementById('set-month').value;
+
+                console.log("正在嘗試同步匯入資料至雲端...");
+
+                // 3. 🔥 強制同步至 Firebase (確保呼叫 index.html 的函式)
+                if (window.saveToFirebase) {
+                    await window.saveToFirebase({
+                        schedule: schedule,
+                        activeNurses: activeNurses,
+                        pool: pool,
+                        deadline: window.currentDeadline // 確保 Deadline 被存進去
+                    }, year, month);
+                    
+                    console.log("雲端同步指令已發送");
+                } else {
+                    console.error("找不到 window.saveToFirebase 函式！");
+                }
+
+                // 4. 同步全域名單 (解決跨月套用問題)
+                if (window.saveGlobalNurses) {
+                    await window.saveGlobalNurses(activeNurses);
+                }
+
+                // 5. 重新渲染畫面
                 renderTable();
-                alert('班表匯入成功！');
+                alert('班表匯入成功，雲端已同步！');
             }
         } catch (err) {
-            alert('檔案格式錯誤，請確保匯入的是正確的 .json 備份檔。');
+            console.error("匯入出錯:", err);
+            alert('檔案格式錯誤，或雲端連線失敗。');
         }
     };
     reader.readAsText(file);
-    // 清空 input 讓同一個檔案可以重複選取
     event.target.value = '';
 }
 
