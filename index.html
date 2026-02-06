@@ -199,6 +199,41 @@
     <!-- Javascript 連結 -->
     <script src="script.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
+    
+    <!-- firbase資料庫 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
+      
+        // 這裡貼上你在 Firebase Console 看到的 config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDM2QRGz1uvwnyyZQGBgmplm7NYrrThbsU",
+            authDomain: "nurseschedule-79425.firebaseapp.com",
+            projectId: "nurseschedule-79425",
+            storageBucket: "nurseschedule-79425.firebasestorage.app",
+            messagingSenderId: "757085358020",
+            appId: "1:757085358020:web:f19591794fc61762984691",
+            measurementId: "G-1HGSJ78TZ9"
+        };
+      
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+      
+        // 將 Firebase 功能掛載到全域 window 物件，讓 script.js 可以使用
+        window.saveToFirebase = async function(data) {
+          try {
+            // 儲存到名為 "schedules" 集合中，ID 為 "current" 的文件
+            await setDoc(doc(db, "schedules", "current"), data);
+            console.log("Firebase 儲存成功！");
+          } catch (e) {
+            console.error("Firebase 儲存失敗", e);
+          }
+        };
+      
+        window.loadFromFirebase = async function() {
+          const docSnap = await getDoc(doc(db, "schedules", "current"));
+          return docSnap.exists() ? docSnap.data() : null;
+        };
+      </script>
 </body>
 </html>
