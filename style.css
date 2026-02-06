@@ -133,3 +133,23 @@ td.cell-container { height: 42px; padding: 0 !important; }
     border-radius: 4px;
 }
 
+/* 針對 ☰ 符號優化，長按不跳選單，且明確告知瀏覽器這要拖拉 */
+.drag-handle {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    touch-action: none !important; 
+    cursor: move;
+}
+
+/* 確保手機操作順滑 */
+.cell-container, .shift-select {
+    -webkit-touch-callout: none !important; /* 禁止 iOS 長按選單 */
+    -webkit-user-select: none !important;    /* 禁止選取文字 */
+}
+
+/* 讓手機版選單字體足夠大，防止點擊時螢幕亂噴 */
+@media screen and (max-width: 1024px) {
+    .shift-select {
+        font-size: 16px !important; 
+    }
+}

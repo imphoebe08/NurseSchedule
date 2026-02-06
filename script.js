@@ -640,29 +640,37 @@ document.getElementById('t-header').innerHTML =
             }
 
             return `<td class="border cell-container ${d.isBuffer?'buffer-day':''} ${sClass}" 
-                        style="${limitStyle}" 
-                        oncontextmenu="handleRightClick(event, '${key}')"> 
-                ${isPre ? 
-                    `<div onclick="toggleLeave('${key}')" class="is-pre-leave w-full h-full flex items-center justify-center cursor-pointer font-bold text-red-500">預</div>` : 
-                (isLeaveMode ? 
-                    `<div onclick="toggleLeave('${key}')" class="w-full h-full cursor-pointer"></div>` : `
-                    <div class="relative w-full h-full">
-                        ${isLocked ? '<span class="absolute top-0 right-0 text-[10px] select-none z-20">🔒</span>' : ''}
-                        <select onchange="updateShift('${n.id}', '${d.dateStr}', this.value)" 
-                                ${isLocked ? 'disabled' : ''} 
-                                class="shift-select ${sClass} w-full h-full bg-transparent font-bold text-center cursor-pointer outline-none relative z-10">
-                                    <option value="" ${s===''?'selected':''}></option>
-                                    <option value="OFF" ${s==='OFF'?'selected':''}>休</option>
-                                    <option value="D" ${s==='D'?'selected':''}>D</option>
-                                    <option value="E" ${s==='E'?'selected':''}>E</option>
-                                    <option value="N" ${s==='N'?'selected':''}>N</option>
-                                    <option value="喪" ${s==='喪'?'selected':''}>喪</option> 
-                                    <option value="OUT" ${s==='OUT'?'selected':''}>公</option>
-                                    <option value="FLOW" ${s==='FLOW'?'selected':''}>FLOW</option>
-                        </select>
-                    </div>
-                `)}
-            </td>`;
+            style="${limitStyle}" 
+            oncontextmenu="handleRightClick(event, '${key}')"> 
+            ${isPre ? 
+                `<div onclick="toggleLeave('${key}')" class="is-pre-leave w-full h-full flex items-center justify-center cursor-pointer font-bold text-red-500">預</div>` : 
+            (isLeaveMode ? 
+                `<div onclick="toggleLeave('${key}')" class="w-full h-full cursor-pointer"></div>` : `
+                <div class="relative w-full h-full flex items-center justify-center">
+                    
+                    ${isLocked ? `
+                        <div onclick="handleRightClick(event, '${key}')" 
+                            style="position: absolute; top: 0; right: 0; width: 25px; height: 25px; z-index: 50; display: flex; align-items: flex-start; justify-content: flex-end; padding: 2px;">
+                            <span style="font-size: 14px; background: rgba(255,255,255,0.8); border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">🔒</span>
+                        </div>
+                    ` : ''}
+
+                    <select onchange="updateShift('${n.id}', '${d.dateStr}', this.value)" 
+                            ${isLocked ? 'disabled' : ''} 
+                            class="shift-select ${sClass} w-full h-full bg-transparent font-bold text-center cursor-pointer outline-none relative z-10"
+                            style="appearance: none; -webkit-appearance: none;">
+                                <option value="" ${s===''?'selected':''}></option>
+                                <option value="OFF" ${s==='OFF'?'selected':''}>休</option>
+                                <option value="D" ${s==='D'?'selected':''}>D</option>
+                                <option value="E" ${s==='E'?'selected':''}>E</option>
+                                <option value="N" ${s==='N'?'selected':''}>N</option>
+                                <option value="喪" ${s==='喪'?'selected':''}>喪</option> 
+                                <option value="OUT" ${s==='OUT'?'selected':''}>公</option>
+                                <option value="FLOW" ${s==='FLOW'?'selected':''}>FLOW</option>
+                    </select>
+                </div>
+            `)}
+        </td>`;
         }).join('');
         
         const selectColor = currentMain === 'FLOW' ? 'bg-slate-200 text-slate-700' : `bg-main-${currentMain}`;
@@ -707,40 +715,55 @@ document.getElementById('t-header').innerHTML =
 
 // 建立一個獨立的初始化函式
 function initSortable() {
- const el = document.getElementById('t-body');
- if (!el) return;
+    const el = document.getElementById('t-body');
+    if (!el) return;
 
- // 如果已經有 Sortable 實例，先銷毀它以免重複綁定
- if (window.sortableInstance) {
-     window.sortableInstance.destroy();
- }
+    if (window.sortableInstance) {
+        window.sortableInstance.destroy();
+    }
 
- // 重新綁定拖拉邏輯
- window.sortableInstance = Sortable.create(el, {
-     handle: '.drag-handle', // 確保只有點擊 ☰ 才能拖拉
-     animation: 150,
-     onEnd: function (evt) {
-         // 取得拖動後的新順序
-         const rows = Array.from(el.querySelectorAll('tr'));
-         const newActiveNurses = [];
-         
-         rows.forEach(row => {
-             // 透過行內的姓名或 ID 找回人員對象 (假設您的按鈕內有 nurseId)
-             // 這裡最安全的方式是從 activeNurses 比對順序
-             const name = row.querySelector('span.truncate').innerText.trim();
-             const nurse = activeNurses.find(n => n.name === name);
-             if (nurse) newActiveNurses.push(nurse);
-         });
+    window.sortableInstance = Sortable.create(el, {
+        handle: '.drag-handle',
+        animation: 150,
+        delay: 400,
+        delayOnTouchOnly: true,
+        
+        // 當使用者放手（Drop）時觸發
+        onEnd: function (evt) {
+            // 1. 取得目前畫面上「拖完之後」的所有 <tr>
+            const rows = Array.from(el.querySelectorAll('tr'));
+            
+            // 2. 建立一個暫存的新陣列
+            const newOrderNurses = [];
+            
+            rows.forEach(row => {
+                // 3. 從 <tr> 裡面找出這名護理師的唯一識別（例如姓名）
+                const nameSpan = row.querySelector('span.truncate');
+                if (nameSpan) {
+                    const nameText = nameSpan.innerText.trim();
+                    // 4. 從舊的 activeNurses 找回原始物件
+                    const nurseObj = activeNurses.find(n => n.name === nameText);
+                    if (nurseObj) {
+                        newOrderNurses.push(nurseObj);
+                    }
+                }
+            });
 
-         // 更新全域變數
-         activeNurses = newActiveNurses;
-         
-         // 存檔並同步雲端
-         save(); 
-         console.log("✅ 順序已調整並同步雲端");
-     }
- });
+            // 5. 關鍵：把全域變數 activeNurses 更新為新順序
+            if (newOrderNurses.length === activeNurses.length) {
+                activeNurses = newOrderNurses;
+                
+                // 6. 存檔到 Firebase / LocalStorage
+                // 這樣重新整理或下次 renderTable 時，順序才會是真的新的
+                save(); 
+                
+                // 7. (選填) 如果你有自動儲存到雲端，可以在這確保同步
+                console.log("✅ 順序已成功同步至資料陣列");
+            }
+        }
+    });
 }
+
 //人員橫向一鍵鎖定
 function toggleRowLock(nurseId) {
     const dates = dateList.map(d => d.dateStr);
