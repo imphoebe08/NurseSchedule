@@ -17,6 +17,7 @@ async function loadTargetMonth() {
     const year = yEl.value;
     const month = mEl.value;
 
+
     // 儲存目前位置，重整不跳掉
     localStorage.setItem('stay_year', year);
     localStorage.setItem('stay_month', month);
@@ -539,19 +540,36 @@ function renderTable() {
     
     // 1. 產生日期表頭
 // 修改 renderTable 內產生表頭的邏輯
-    document.getElementById('t-header').innerHTML = 
-        '<th class="p-3 sticky-col bg-slate-800 min-w-[180px]">人員 (主班別)</th>' + 
-        dateList.map((d, idx) => {
-            const bgColor = d.isBuffer ? 'bg-slate-700 text-slate-400' : '';
-            return `<th class="p-2 border border-slate-700 min-w-[55px] text-[10px] ${bgColor}">
-                <div class="flex flex-col items-center gap-1">
-                    ${d.display}
-                    ${!d.isBuffer ? `<button onclick="toggleColumnLock('${d.dateStr}')" class="text-[10px] px-1 bg-slate-600 hover:bg-slate-500 rounded">🔒</button>` : ''}
-                </div>
-            </th>`;
-        }).join('') +
-        '<th class="p-2 bg-slate-700 min-w-[60px]">休假</th>' +
-        '<th class="p-2 bg-blue-900 text-white min-w-[60px]">出勤</th>';
+// --- 修改 renderTable 內產生表頭的邏輯 ---
+document.getElementById('t-header').innerHTML = 
+    '<th class="p-3 sticky-col bg-slate-800 min-w-[180px]">人員 (主班別)</th>' + 
+    dateList.map((d, idx) => {
+        // 1. 從 dateStr (例如 "2026-3-20") 算出星期幾
+        const dateParts = d.dateStr.split('-'); 
+        const year = parseInt(dateParts[0]);
+        const month = parseInt(dateParts[1]);
+        const day = parseInt(dateParts[2]);
+        
+        // JS 的月份要減 1 (0 代表 1 月)
+        const dateObj = new Date(year, month - 1, day);
+        const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+        const dayName = weekDays[dateObj.getDay()]; // 這就會算出 "五"
+
+        // 2. 判斷是否為假日 (週六 6, 週日 0)，假日字體換顏色
+        const isWeekend = (dateObj.getDay() === 0 || dateObj.getDay() === 6);
+        const dayColor = isWeekend ? 'text-orange-400' : 'text-slate-300';
+        const bgColor = d.isBuffer ? 'bg-slate-700 text-slate-400' : '';
+
+        return `<th class="p-2 border border-slate-700 min-w-[55px] text-[10px] ${bgColor}">
+            <div class="flex flex-col items-center gap-1">
+                <span class="text-white text-xs font-bold">${day}</span>
+                <span class="${dayColor}">(${dayName})</span>
+                ${!d.isBuffer ? `<button onclick="toggleColumnLock('${d.dateStr}')" class="text-[10px] px-1 bg-slate-600 hover:bg-slate-500 rounded">🔒</button>` : ''}
+            </div>
+        </th>`;
+    }).join('') +
+    '<th class="p-2 bg-slate-700 min-w-[60px]">休假</th>' +
+    '<th class="p-2 bg-blue-900 text-white min-w-[60px]">出勤</th>';
     // 2. 產生人員資料列
     document.getElementById('t-body').innerHTML = activeNurses.map(n => {
         let currentMain = n.mainShift || 'D';
