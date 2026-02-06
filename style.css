@@ -1,0 +1,134 @@
+/* ==========================================
+   1. 班表格子班別顏色 (Shift Colors)
+   控制表格內 D/E/N/休 等格子的背景與文字顏色
+   ========================================== */
+
+/* D 班：淺藍底深藍字 */
+.shift-D { background-color: #e0f2fe !important; color: #0369a1 !important; } 
+
+/* E 班：淺黃底深褐字 */
+.shift-E { background-color: #fef3c7 !important; color: #92400e !important; } 
+
+/* N 班：淺紫底深紫字 */
+.shift-N { background-color: #f3e8ff !important; color: #6b21a8 !important; }
+
+/* FLOW (支援/浮動) 班：淺粉底深紅字 */
+.shift-FLOW { background-color: #fdf2f8 !important; color: #be185d !important; }
+
+/* OFF (休假)：淺灰底藍灰字 */
+.shift-OFF { background-color: #f1f5f9 !important; color: #64748b !important; }
+
+/* OUT (公假/公出)：淺綠底深綠字 */
+.shift-OUT { background-color: #dcfce7 !important; color: #166534 !important; }
+
+/* 喪假顏色：黑底白字或深灰底 */
+.shift-喪 { background-color: #334155 !important; color: #ffffff !important; }
+
+/* 空白格：純白背景 */
+.shift-EMPTY { background-color: #ffffff !important; }
+
+
+/* ==========================================
+   2. 特殊狀態與表格結構 (UI Elements)
+   ========================================== */
+
+/* 預假標示：紅色外觀，置中顯示「預」字 */
+.is-pre-leave { 
+    background-color: #fee2e2 !important; 
+    color: #dc2626 !important; 
+    font-weight: bold; 
+    height: 100%; 
+    width: 100%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+}
+
+/* 緩衝日期 (上個月 21~月底)：淺灰色調，降低透明度以利區分 */
+.buffer-day { background-color: #f8fafc !important; opacity: 0.7; }
+
+/* 凍結欄位：讓護理師姓名欄固定在左側不隨捲軸移動 */
+.sticky-col { 
+    position: sticky; 
+    left: 0; 
+    background: white; 
+    z-index: 30; 
+    border-right: 2px solid #e5e7eb; 
+}
+
+/* 統計列警示：人力不足時顯示紅色外框 */
+.stat-alert { 
+    background-color: #fee2e2 !important; 
+    border: 2px solid #ef4444 !important; 
+    color: #b91c1c; 
+}
+
+/* 統計列正常：人力足夠時顯示綠色 */
+.stat-ok { background-color: #dcfce7 !important; color: #15803d; }
+
+/* 班表下拉選單：去除預設箭頭，使其滿版並置中文字 */
+select.shift-select { 
+    appearance: none; 
+    border: none; 
+    width: 100%; 
+    height: 100%; 
+    text-align: center; 
+    font-weight: bold; 
+    background: transparent; 
+    cursor: pointer; 
+}
+
+/* 表格格子容器：設定固定高度並去除內距 */
+td.cell-container { height: 42px; padding: 0 !important; }
+
+/* 編輯彈窗：設定半透明遮罩背景，預設隱藏 */
+.edit-modal { 
+    display: none; 
+    position: fixed; 
+    inset: 0; 
+    background: rgba(0,0,0,0.5); 
+    z-index: 100; 
+    align-items: center; 
+    justify-content: center; 
+}
+
+/* 主班別小標籤：設定字體大小與邊框樣式 */
+.badge-main { 
+    font-size: 10px; 
+    padding: 1px 4px; 
+    border-radius: 4px; 
+    margin-left: 4px; 
+    font-weight: bold; 
+    border: 1px solid currentColor; 
+}
+
+
+/* ==========================================
+   3. 主班別下拉選單顏色 (Main Shift Badge)
+   專門給人員名稱旁邊那個 D/E/N 選項用的顏色
+   ========================================== */
+
+/* D 班標籤顏色 */
+.bg-main-D {
+    background-color: #dbeafe !important; /* 淺藍背景 */
+    color: #1e40af !important;           /* 深藍文字 */
+}
+
+/* E 班標籤顏色 (修正後) */
+.bg-main-E {
+    background-color: #ffedd5 !important; /* 淺橘背景 */
+    color: #9a3412 !important;           /* 深橘褐色文字，確保在淺底上清晰可見 */
+}
+
+/* N 班標籤顏色 */
+.bg-main-N {
+    background-color: #f3e8ff !important; /* 淺紫背景 */
+    color: #6b21a8 !important;           /* 深紫文字 */
+}
+
+/* 通用設定：強化主班別選單的字體加粗與圓角 */
+.bg-main-D, .bg-main-E, .bg-main-N {
+    font-weight: 800 !important;
+    padding-left: 4px !important;
+    border-radius: 4px;
+}

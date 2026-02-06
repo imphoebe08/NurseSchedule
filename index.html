@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>羊羊專用排班系統（來自滾滾的❤️）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 p-6 min-h-screen">
+
+    <div id="editModal" class="edit-modal">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-96">
+            <h3 class="text-lg font-bold mb-4 border-b pb-2">編輯人員資訊</h3>
+            <input type="hidden" id="edit-id">
+            <div class="space-y-4">
+                <input id="edit-name" type="text" class="w-full border p-2 rounded" placeholder="姓名">
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <label class="flex items-center p-2 bg-slate-50 rounded"><input type="checkbox" class="role-checkbox-edit mr-2" data-role="isLeader"> Leader</label>
+                    <label class="flex items-center p-2 bg-slate-50 rounded"><input type="checkbox" class="role-checkbox-edit mr-2" data-role="isIntern"> 實習生</label>
+                    <label class="flex items-center p-2 bg-slate-50 rounded"><input type="checkbox" class="role-checkbox-edit mr-2" data-role="isUnready"> 未獨立</label>
+                    <label class="flex items-center p-2 bg-slate-50 rounded"><input type="checkbox" class="role-checkbox-edit mr-2" data-role="isSupport"> 支援</label>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button onclick="closeEdit()" class="px-4 py-2 bg-slate-100 rounded">取消</button>
+                <button onclick="saveEdit()" class="px-4 py-2 bg-indigo-600 text-white rounded">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="batchEditModal" class="edit-modal">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-[90vw] max-h-[80vh] flex flex-col">
+            <h3 class="text-lg font-bold mb-2 border-b pb-2">📅 批次編輯過往班表 (14-20號)</h3>
+            <p class="text-xs text-slate-500 mb-4">在此修改不會觸發頁面跳轉，完成後請點擊下方「儲存全部變更」。</p>
+            
+            <div class="overflow-auto flex-1 border rounded">
+                <table class="w-full text-sm border-collapse">
+                    <thead class="sticky top-0 bg-slate-100">
+                        <tr id="batch-header"></tr>
+                    </thead>
+                    <tbody id="batch-body"></tbody>
+                </table>
+            </div>
+    
+            <div class="flex justify-between items-center mt-6">
+                <button onclick="clearBatchSelects()" class="px-4 py-2 bg-rose-100 text-rose-600 rounded font-bold hover:bg-rose-200 transition">清空全部 (設為OFF)</button>
+                <div class="flex gap-2">
+                    <button onclick="closeBatchEdit()" class="px-4 py-2 bg-slate-100 rounded">取消</button>
+                    <button onclick="saveBatchEdit()" class="px-6 py-2 bg-indigo-600 text-white rounded font-bold shadow-lg">💾 儲存全部變更</button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <div class="max-w-[98vw] mx-auto space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+            <div class="flex flex-wrap gap-8 items-start">
+                <div class="flex-1">
+                    <h2 class="text-xl font-bold mb-4 text-slate-700">🏥 羊羊專用排班系統（來自滾滾的❤️）</h2>
+                    <div class="flex gap-4 items-end mb-6 bg-blue-50 p-4 rounded-xl">
+                        <div>
+                            <label class="block text-[10px] font-bold text-blue-800">年份</label>
+                            <input id="set-year" type="number" class="border p-2 rounded w-24 font-bold" oninput="initDates()">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-blue-800">月份</label>
+                            <select id="set-month" class="border p-2 rounded w-24 font-bold" onchange="initDates()">
+                                <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+                                <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+                                <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+                                <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div class="flex flex-wrap gap-4 items-end">
+                            <input id="n-name" type="text" class="border p-2 rounded text-sm w-40" placeholder="輸入姓名">
+                            <div class="grid grid-cols-2 gap-2 text-[10px]">
+                                <label><input type="checkbox" class="role-checkbox-new" data-role="isLeader"> Leader</label>
+                                <label><input type="checkbox" class="role-checkbox-new" data-role="isIntern"> 實習生</label>
+                                <label><input type="checkbox" class="role-checkbox-new" data-role="isUnready"> 未獨立</label>
+                                <label><input type="checkbox" class="role-checkbox-new" data-role="isSupport"> 支援</label>
+                            </div>
+                            <button onclick="addNurse()" class="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold">新增人員</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-slate-50 p-5 rounded-xl min-w-[320px]">
+                    <h2 class="text-sm font-bold mb-3">📊 個班別人力需求設定</h2>
+                    <div class="grid grid-cols-3 gap-4 mb-4">
+                        <div class="text-center">D <input id="req-D" type="number" value="6" class="w-full border p-1 rounded text-center" onchange="updateStats()"></div>
+                        <div class="text-center">E <input id="req-E" type="number" value="5" class="w-full border p-1 rounded text-center" onchange="updateStats()"></div>
+                        <div class="text-center">N <input id="req-N" type="number" value="3" class="w-full border p-1 rounded text-center" onchange="updateStats()"></div>
+                    </div>
+                    <div class="text-[10px] text-slate-500 italic">※ 公出班不計入以上臨床人力</div>
+                    <div class="p-4 bg-slate-50 border rounded-lg shadow-inner mb-4">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 items-end">
+                            <div class="bg-white p-3 rounded border shadow-sm">
+                                <label class="block text-xs font-bold text-slate-500 mb-2">🏥 全單位總床數</label>
+                                <input type="number" id="total-beds" value="43" oninput="updateStats()" class="w-full p-2 border rounded font-bold text-lg text-slate-700">
+                            </div>
+                    
+                            <div class="col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="p-3 bg-blue-50 rounded border border-blue-100 flex flex-col justify-between">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-xs text-blue-600 font-bold">D 班總覽</span>
+                                        <span class="text-[10px] bg-blue-200 text-blue-700 px-2 py-0.5 rounded-full">需求: <span id="display-req-D">6</span> 人</span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex-1">
+                                            <label class="text-[9px] text-slate-400 block">L 負責床數</label>
+                                            <input type="number" id="l-beds-D" value="3" oninput="updateStats()" class="w-full p-1 border rounded">
+                                        </div>
+                                        <div class="text-right">
+                                            <label class="text-[9px] text-slate-400 block">預估護病比</label>
+                                            <div id="ratio-D" class="text-lg font-black text-blue-700 leading-tight">1:8.0</div>
+                                        </div>
+                                    </div>
+                                </div>
+                    
+                                <div class="p-3 bg-amber-50 rounded border border-amber-100 flex flex-col justify-between">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-xs text-amber-600 font-bold">E 班總覽</span>
+                                        <span class="text-[10px] bg-amber-200 text-amber-700 px-2 py-0.5 rounded-full">需求: <span id="display-req-E">5</span> 人</span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex-1">
+                                            <label class="text-[9px] text-slate-400 block">L 負責床數</label>
+                                            <input type="number" id="l-beds-E" value="5" oninput="updateStats()" class="w-full p-1 border rounded">
+                                        </div>
+                                        <div class="text-right">
+                                            <label class="text-[9px] text-slate-400 block">預估護病比</label>
+                                            <div id="ratio-E" class="text-lg font-black text-amber-700 leading-tight">1:9.5</div>
+                                        </div>
+                                    </div>
+                                </div>
+                    
+                                <div class="p-3 bg-purple-50 rounded border border-purple-100 flex flex-col justify-between">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-xs text-purple-600 font-bold">N 班總覽</span>
+                                        <span class="text-[10px] bg-purple-200 text-purple-700 px-2 py-0.5 rounded-full">需求: <span id="display-req-N">3</span> 人</span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex-1">
+                                            <label class="text-[9px] text-slate-400 block">L 負責床數</label>
+                                            <input type="number" id="l-beds-N" value="10" oninput="updateStats()" class="w-full p-1 border rounded">
+                                        </div>
+                                        <div class="text-right">
+                                            <label class="text-[9px] text-slate-400 block">預估護病比</label>
+                                            <div id="ratio-N" class="text-lg font-black text-purple-700 leading-tight">1:16.5</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+            <div id="nurse-pool-display" class="flex flex-wrap gap-2 mt-6"></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-slate-800">📅 本月班表 (<span id="range-text"></span>)</h2>
+                <div class="flex gap-2">
+                    <button onclick="autoFillSmart()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-emerald-700 transition">🪄 一鍵排班</button>
+                    <button onclick="toggleMode()" id="mode-btn" class="bg-rose-500 text-white px-4 py-2 rounded-lg font-bold">進入預假模式</button>
+                    <button onclick="openBatchEdit()" class="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-amber-600 transition">修改上月班表</button>
+                    <button onclick="clearScheduleOnly()" class="bg-white border-rose-200 text-rose-500 border-2 px-4 py-2 rounded-lg font-bold">清空班表</button>
+                    <button onclick="exportToXls()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-blue-700 transition">📥 匯出Excel</button>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="exportSchedule()" class="bg-blue-600 text-white px-3 py-1 rounded shadow hover:bg-blue-700">匯出班表</button>
+                    <input type="file" id="importFile" style="display:none" onchange="importSchedule(event)">
+                    <button onclick="document.getElementById('importFile').click()" class="bg-emerald-600 text-white px-3 py-1 rounded shadow hover:bg-emerald-700">匯入班表</button>
+                </div>
+            </div>
+
+            <div class="bg-indigo-50 p-5 rounded-xl mb-6 flex flex-wrap items-end gap-4 shadow-inner">
+                <select id="pool-select" class="border p-2 rounded-lg bg-white min-w-[180px]"></select>
+                <select id="select-shift" class="border p-2 rounded-lg bg-white font-bold">
+                    <option value=" "> - </option><option value="D">D (早)</option><option value="E">E (小夜)</option><option value="N">N (大夜)</option><option value="OUT">公 (公出)</option><option value="FLOW">FLOW</option><option value="OFF">OFF</option>
+                </select>
+                <button onclick="addToSchedule()" class="bg-indigo-600 text-white px-8 py-2 rounded-lg font-bold">加入班表</button>
+            </div>
+
+            <div id="table-wrapper" class="overflow-x-auto rounded-xl border border-slate-300">
+                <table class="w-full border-collapse text-sm">
+                    <thead><tr id="t-header" class="bg-slate-800 text-white"></tr></thead>
+                    <tbody id="t-body" class="bg-white"></tbody>
+                    <tfoot id="t-foot" class="bg-slate-50"></tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- Javascript 連結 -->
+    <script src="script.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+</body>
+</html>
