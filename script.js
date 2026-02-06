@@ -681,7 +681,47 @@ function renderTable() {
             </tr>`;
     }).join('');
 
-    if (typeof updateStats === 'function') updateStats();
+ if (typeof updateStats === 'function') updateStats();
+
+ // 🔥 關鍵修正：重新初始化拖拉功能
+ initSortable(); 
+}
+
+// 建立一個獨立的初始化函式
+function initSortable() {
+ const el = document.getElementById('t-body');
+ if (!el) return;
+
+ // 如果已經有 Sortable 實例，先銷毀它以免重複綁定
+ if (window.sortableInstance) {
+     window.sortableInstance.destroy();
+ }
+
+ // 重新綁定拖拉邏輯
+ window.sortableInstance = Sortable.create(el, {
+     handle: '.drag-handle', // 確保只有點擊 ☰ 才能拖拉
+     animation: 150,
+     onEnd: function (evt) {
+         // 取得拖動後的新順序
+         const rows = Array.from(el.querySelectorAll('tr'));
+         const newActiveNurses = [];
+         
+         rows.forEach(row => {
+             // 透過行內的姓名或 ID 找回人員對象 (假設您的按鈕內有 nurseId)
+             // 這裡最安全的方式是從 activeNurses 比對順序
+             const name = row.querySelector('span.truncate').innerText.trim();
+             const nurse = activeNurses.find(n => n.name === name);
+             if (nurse) newActiveNurses.push(nurse);
+         });
+
+         // 更新全域變數
+         activeNurses = newActiveNurses;
+         
+         // 存檔並同步雲端
+         save(); 
+         console.log("✅ 順序已調整並同步雲端");
+     }
+ });
 }
 //人員橫向一鍵鎖定
 function toggleRowLock(nurseId) {

@@ -162,9 +162,28 @@
             <div id="nurse-pool-display" class="flex flex-wrap gap-2 mt-6"></div>
         </div>
 
+        
         <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold text-slate-800">📅 本月班表 (<span id="range-text"></span>)</h2>
+                <div class="md:hidden bg-white p-4 rounded-xl shadow-lg border border-slate-200 mb-4 mobile-only-controls">
+                    <div id="deadline-mobile-box" class="mb-4"></div>
+                
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <button onclick="autoFillSmart()" class="bg-emerald-600 text-white py-3 rounded-lg font-bold text-sm">🪄 一鍵排班</button>
+                        <button onclick="toggleMode()" id="mode-btn-mob" class="bg-rose-500 text-white py-3 rounded-lg font-bold text-sm">進入預假模式</button>
+                        <button onclick="save()" class="bg-indigo-600 text-white py-3 rounded-lg font-bold text-sm col-span-2">同步雲端資料</button>
+                    </div>
+                
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="exportToXls()" class="bg-blue-600 text-white py-2 rounded-lg text-xs font-bold">📥 匯出Excel</button>
+                        <button onclick="document.getElementById('importFile').click()" class="bg-slate-500 text-white py-2 rounded-lg text-xs font-bold">匯入班表</button>
+                    </div>
+                </div>
+                
+                <div id="desktop-header-area" class="hidden md:block bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                    </div>
+                <!-- 電腦板專用按鈕 -->
                 <div class="flex gap-2">
                     <button onclick="autoFillSmart()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-emerald-700 transition">🪄 一鍵排班</button>
                     <button onclick="toggleMode()" id="mode-btn" class="bg-rose-500 text-white px-4 py-2 rounded-lg font-bold">進入預假模式</button>
@@ -291,5 +310,95 @@ window.saveToFirebase = async function(allData, year, month) {
             window.firebaseReady = true;
         }
     </script>
+    <style>
+/* 📱 手機版專用優化 (當螢幕寬度小於 768px 時) */
+@media screen and (max-width: 768px) {
+    
+    /* 1. 全域字體補強：確保黑色字體在小螢幕依然銳利 */
+    body {
+        -webkit-text-size-adjust: 100%; /* 防止手機自動縮放字體 */
+    }
+
+    /* 2. 截止日放大：手機上也要夠顯眼，但不佔空間 */
+    #deadline-display div {
+        font-size: 22px !important;
+        font-weight: 900 !important;
+        color: #000000 !important;
+        padding: 10px !important;
+        border-left: 6px solid #353866 !important;
+        background: #f8fafc;
+        margin-bottom: 15px !important;
+    }
+
+    /* 3. 人名欄位優化：稍微縮窄但維持黑色粗體 */
+    .sticky-col {
+        min-width: 85px !important;
+        max-width: 85px !important;
+        font-size: 13px !important;
+        background-color: #ffffff !important;
+        z-index: 40 !important;
+        padding: 4px !important;
+    }
+    
+    .sticky-col span {
+        color: #000000 !important;
+        font-weight: 900 !important;
+    }
+
+    /* 4. 格子點擊優化：把格子撐高，讓手指好點選 */
+    .cell-container {
+        min-width: 50px !important; /* 格子寬度 */
+        height: 45px !important;    /* 格子高度增加，方便點選 */
+    }
+
+    /* 5. 下拉選單文字放大：防止點擊時螢幕亂跳 */
+    .shift-select {
+        font-size: 16px !important; /* iOS 16px 以上才不會自動放大頁面 */
+        font-weight: bold !important;
+        color: #000000 !important;
+        appearance: none; /* 去除內建箭頭，讓畫面乾淨 */
+    }
+
+    /* 6. 表頭日期：維持細緻但清晰 */
+    #t-header th {
+        font-size: 10px !important;
+        padding: 6px 2px !important;
+        color: #ffffff !important; /* 保持深色底白色字 */
+    }
+
+    /* 7. 鎖定按鈕與關閉按鈕：加大熱區 */
+    button[onclick*="toggleRowLock"], 
+    button[onclick*="removeFromActive"] {
+        padding: 5px !important;
+        font-size: 16px !important;
+    }
+
+    /* 8. 主班別選單：維持 #353866 配色但字體放大 */
+    select[onchange*="changeNurseMainShift"] {
+        font-size: 12px !important;
+        padding: 2px 4px !important;
+        background-color: #353866 !important;
+        color: #ffffff !important;
+    }
+
+    /* 9. 預假文字：加大並置中 */
+    .is-pre-leave {
+        font-size: 16px !important;
+    }
+
+    /* 10. 底部統計數字：純黑放大 */
+    td.text-center {
+        font-size: 14px !important;
+        color: #000000 !important;
+    }
+}
+
+/* 針對觸控螢幕的滾動優化 */
+.table-container {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; /* 讓 iPhone 滾動有絲滑感 */
+}
+</style>
 </body>
 </html>
