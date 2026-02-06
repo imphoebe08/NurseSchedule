@@ -9,7 +9,6 @@ let lockedCells = JSON.parse(localStorage.getItem('locked_v22')) || []; // 記�
 
 // 初始化程式：設定預設年月、連線雲端並啟動渲染
 // 1. 先定義讀取函式 (確保它在 init 被呼叫前就存在)
-// 確保這個函式定義在最前面
 async function loadTargetMonth() {
     const yEl = document.getElementById('set-year');
     const mEl = document.getElementById('set-month');
@@ -18,27 +17,32 @@ async function loadTargetMonth() {
     const year = yEl.value;
     const month = mEl.value;
 
-    // 🔥 只要一讀取，就立刻記住目前選的位置
+    // 🔥 儲存目前位置，確保重整後不跳回 3 月
     localStorage.setItem('stay_year', year);
     localStorage.setItem('stay_month', month);
 
-    console.log(`📡 正在主動讀取雲端路徑：${year}_${month}`);
+    console.log(`📡 正在請求雲端資料：${year}_${month}`);
 
     if (window.loadFromFirebase) {
         const data = await window.loadFromFirebase(year, month);
+        
         if (data) {
-            console.log(`✅ 已從雲端抓到 ${year}_${month} 的資料`);
+            console.log("✅ 抓到資料了，正在注入系統...", data);
+            
+            // 🔥 對接資料庫欄位 (根據你的截圖，欄位名稱要對準)
+            activeNurses = data.activeNurses || []; 
             schedule = data.schedule || {};
             pool = data.pool || [];
-            activeNurses = data.activeNurses || [];
             
-            // 執行渲染：這裡會套用你的純黑文字規範
-            initDates();
+            // 執行渲染 (這裡會自動帶入你的黑色文字與按鈕規範)
+            initDates(); 
             renderPool();
             renderTable();
-            updateStats();
+            if (typeof updateStats === 'function') updateStats();
         } else {
-            console.log("ℹ️ 雲端此月份沒有資料，清空畫面");
+            console.log("⚠️ 雲端此月份沒有資料");
+            // 清空當前資料以顯示空白表單
+            activeNurses = [];
             schedule = {};
             initDates();
             renderTable();
@@ -48,48 +52,37 @@ async function loadTargetMonth() {
 
 // 2. 初始化函式
 async function init() {
-    console.log("🚀 系統啟動，正在執行初始化與恢復記憶...");
     const yEl = document.getElementById('set-year');
     const mEl = document.getElementById('set-month');
-    const now = new Date();
 
-    // 1. 優先讀取上次停留的地方，沒有才用預設
+    // 1. 恢復上次停留的月份
     const savedYear = localStorage.getItem('stay_year');
     const savedMonth = localStorage.getItem('stay_month');
 
     if (savedYear && savedMonth) {
         yEl.value = savedYear;
         mEl.value = savedMonth;
-        console.log(`📍 恢復至上次位置：${savedYear}年 ${savedMonth}月`);
-    } else {
-        yEl.value = now.getFullYear();
-        const defaultMonth = (now.getDate() >= 21) ? (now.getMonth() + 2) : (now.getMonth() + 1);
-        mEl.value = defaultMonth;
     }
 
-    // 2. 🔥 重要：強制等待 Firebase SDK 就緒
+    // 2. 🔥 強制等待 Firebase 載入 (防呆機制)
     let retry = 0;
-    while (typeof window.loadFromFirebase !== 'function' && retry < 30) {
+    while (typeof window.loadFromFirebase !== 'function' && retry < 20) {
         await new Promise(r => setTimeout(r, 200));
         retry++;
     }
 
-    // 3. 🔥 直接執行讀取 (這樣就不用手動改月份了)
-    if (typeof loadTargetMonth === 'function') {
-        await loadTargetMonth();
-    }
-
-    // 4. 綁定監聽器：讓你「之後」切換時依然有效
+    // 3. 綁定監聽 (放在讀取之前)
     yEl.onchange = loadTargetMonth;
     mEl.onchange = loadTargetMonth;
 
-    // 5. 綁定你的單選邏輯 (文字與按鈕規範)
+    // 4. 🔥 主動發動第一次讀取
+    await loadTargetMonth();
+
+    // 5. 其他視覺與互動規範
     if (typeof bindCheckboxSingleSelect === 'function') {
         bindCheckboxSingleSelect('.role-checkbox-new');
         bindCheckboxSingleSelect('.role-checkbox-edit');
     }
-    
-    console.log("✨ 系統初始化流程完畢");
 }
 
 // 同時修改 initDates，讓它在每次日期變動時記住當下位置

@@ -254,13 +254,25 @@
         };
 
 // 雲端讀取：根據當前選單的年月抓取
+// 在 index.html 的 Firebase 腳本區塊
         window.loadFromFirebase = async function(year, month) {
             try {
-                const docId = `${year}_${month}`;
-                const docSnap = await getDoc(doc(db, "Schedules", docId));
-                return docSnap.exists() ? docSnap.data() : null;
+                // 強制確保傳入的是字串格式，避免像 2026_03 vs 2026_3 的問題
+                const docId = `${String(year)}_${String(month)}`;
+                console.log("📡 正在嘗試讀取路徑：", docId);
+                
+                // 引用 NurseSchedule 集合下的文件
+                const docRef = doc(db, "NurseSchedule", docId);
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    return docSnap.data();
+                } else {
+                    console.warn(`❓ 路徑 ${docId} 在資料庫中不存在`);
+                    return null;
+                }
             } catch (e) {
-                console.error("❌ 讀取失敗:", e);
+                console.error("❌ Firebase 讀取錯誤:", e);
                 return null;
             }
         };
