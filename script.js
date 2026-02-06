@@ -7,82 +7,66 @@ let isLeaveMode = false;
 let dateList = [];
 let lockedCells = JSON.parse(localStorage.getItem('locked_v22')) || []; // 記錄鎖定的格子
 
-// 初始化程式：設定預設年月、綁定單選邏輯、啟動日期與表格渲染
-<<<<<<< HEAD
-function init() {
-    const now = new Date();
-    
-    // --- 修正處：優先讀取暫存的年月，沒有才用預設 ---
-    const savedYear = localStorage.getItem('stay_year');
-    const savedMonth = localStorage.getItem('stay_month');
-
-    if (savedYear && savedMonth) {
-        document.getElementById('set-year').value = savedYear;
-        document.getElementById('set-month').value = savedMonth;
-    } else {
-        document.getElementById('set-year').value = now.getFullYear();
-        document.getElementById('set-month').value = (now.getDate() >= 21) ? (now.getMonth() + 2) : (now.getMonth() + 1);
-    }
-    
-    bindCheckboxSingleSelect('.role-checkbox-new');
-    bindCheckboxSingleSelect('.role-checkbox-edit');
-    
-    // 初始化日期與表格
-=======
-// 注意：前面加上 async
+// 初始化程式：設定預設年月、連線雲端並啟動渲染
 async function init() {
     console.log("正在初始化系統並連線雲端...");
     const now = new Date();
     
-    // 1. 宣告一個變數來存放抓到的資料
-    let cloudData = null;
+    // 1. 抓取當前選單上的年月（如果有的話）
+    const yEl = document.getElementById('set-year');
+    const mEl = document.getElementById('set-month');
+    
+    // 2. 先設定初始年月（優先讀取 localStorage，否則用預設）
+    const savedYear = localStorage.getItem('stay_year');
+    const savedMonth = localStorage.getItem('stay_month');
 
-    // 2. 嘗試從 Firebase 抓取最新資料
-    if (window.loadFromFirebase) {
-        cloudData = await window.loadFromFirebase();
+    if (savedYear && savedMonth) {
+        yEl.value = savedYear;
+        mEl.value = savedMonth;
+    } else {
+        yEl.value = now.getFullYear();
+        mEl.value = (now.getDate() >= 21) ? (now.getMonth() + 2) : (now.getMonth() + 1);
     }
 
-    // 3. 設定年份與月份 (優先順序：雲端 > 本地暫存 > 預設)
-    if (cloudData && cloudData.stay_year) {
-        // 如果雲端有資料，直接用雲端的設定
-        document.getElementById('set-year').value = cloudData.stay_year;
-        document.getElementById('set-month').value = cloudData.stay_month;
+    // 3. 嘗試從 Firebase 抓取「該月份」的最新資料
+    if (window.loadFromFirebase) {
+        const cloudData = await window.loadFromFirebase(yEl.value, mEl.value);
         
-        // 同時把雲端的其他資料塞回變數
-        pool = cloudData.pool || [];
-        activeNurses = cloudData.activeNurses || [];
-        schedule = cloudData.schedule || {};
-        leaves = cloudData.leaves || [];
-        window.lockedCells = cloudData.lockedCells || [];
-    } else {
-        // 雲端沒資料才讀本地或預設
-        const savedYear = localStorage.getItem('stay_year');
-        const savedMonth = localStorage.getItem('stay_month');
-        if (savedYear && savedMonth) {
-            document.getElementById('set-year').value = savedYear;
-            document.getElementById('set-month').value = savedMonth;
+        if (cloudData) {
+            console.log("✅ 成功從雲端回復資料");
+            // 將雲端資料塞回變數
+            pool = cloudData.pool || [];
+            activeNurses = cloudData.activeNurses || [];
+            schedule = cloudData.schedule || {};
+            leaves = cloudData.leaves || [];
+            window.lockedCells = cloudData.lockedCells || [];
+            
+            // 如果雲端有存 deadline，也要更新到畫面上
+            if (cloudData.deadline && document.getElementById('deadline-input')) {
+                document.getElementById('deadline-input').value = cloudData.deadline;
+            }
         } else {
-            document.getElementById('set-year').value = now.getFullYear();
-            const defaultMonth = (now.getDate() >= 21) ? (now.getMonth() + 2) : (now.getMonth() + 1);
-            document.getElementById('set-month').value = defaultMonth;
+            console.log("ℹ️ 雲端此月份暫無資料，使用本地空白設定");
         }
     }
+
+    // 4. 綁定 UI 互動邏輯 (單選/編輯)
+    if (typeof bindCheckboxSingleSelect === 'function') {
+        bindCheckboxSingleSelect('.role-checkbox-new');
+        bindCheckboxSingleSelect('.role-checkbox-edit');
+    }
     
-    // 4. 綁定按鈕事件 (維持原樣)
-    bindCheckboxSingleSelect('.role-checkbox-new');
-    bindCheckboxSingleSelect('.role-checkbox-edit');
+    // 5. 綁定選單即時更換事件
+    yEl.onchange = loadTargetMonth;
+    mEl.onchange = loadTargetMonth;
     
-    // 5. 初始化日期與表格 (這時候變數已經填入雲端資料了)
->>>>>>> parent of 043e187 (修正無法存取資料庫)
+    // 6. 執行畫面渲染 (維持純黑文字與 #353866 按鈕風格)
     initDates(); 
     renderPool(); 
     renderTable(); 
-    initSortable();
-<<<<<<< HEAD
-=======
-    
-    console.log("雲端資料載入完成！");
->>>>>>> parent of 043e187 (修正無法存取資料庫)
+    if (typeof initSortable === 'function') initSortable();
+
+    console.log("✨ 系統初始化完成，雲端連線就緒！");
 }
 
 // 同時修改 initDates，讓它在每次日期變動時記住當下位置

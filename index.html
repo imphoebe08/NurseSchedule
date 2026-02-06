@@ -240,27 +240,35 @@
         };
 
         window.loadFromFirebase = async function(year, month) {
-            try {
-<<<<<<< HEAD
-                const docId = `${year}_${month}`;
-                const docSnap = await getDoc(doc(db, "NurseSchedule", docId));
-                return docSnap.exists() ? docSnap.data() : null;
-            } catch (e) {
-=======
-                const docRef = doc(db, "NurseSchedule", "current");
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    console.log("從雲端抓到資料了！", docSnap.data());
-                    return docSnap.data();
-                } else {
-                    console.log("雲端沒有資料。");
-                    return null;
-                }
-            } catch (e) {
-                console.error("讀取失敗:", e);
->>>>>>> parent of 043e187 (修正無法存取資料庫)
-                return null;
-            }
+    try {
+        // 根據你選取的年月動態讀取
+        const docId = `${year}_${month}`;
+        console.log("正在嘗試讀取路徑：", docId);
+        
+        const docRef = doc(db, "NurseSchedule", docId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+            console.log(`✅ 已從雲端抓到 ${docId} 的資料`);
+            return docSnap.data();
+        } else {
+            console.log(`ℹ️ 雲端路徑 ${docId} 目前沒有資料`);
+            return null;
+        }
+    } catch (e) {
+        console.error("❌ 讀取發生報錯:", e);
+        return null;
+    }
+};
+
+window.saveToFirebase = async function(allData, year, month) {
+    try {
+        const docId = `${year}_${month}`;
+        await setDoc(doc(db, "NurseSchedule", docId), allData);
+        console.log(`✅ 已成功儲存至月份：${docId}`);
+    } catch (e) {
+        console.error("❌ 儲存發生報錯:", e);
+    }
 };
       </script>
 </body>
