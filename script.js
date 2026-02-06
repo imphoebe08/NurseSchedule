@@ -850,33 +850,27 @@ function toggleMode() { isLeaveMode = !isLeaveMode; document.getElementById('mod
 
 // 存檔到 localStorage
 async function save() {
-    // 1. 打包所有資料
+    // 1. 打包最新資料
     const allData = {
         pool: pool,
         activeNurses: activeNurses,
         schedule: schedule,
         leaves: leaves,
         lockedCells: window.lockedCells || [],
-        // 把年月份也順便打包進去，這樣換裝置才會同步月份
-        stay_year: document.getElementById('set-year') ? document.getElementById('set-year').value : "",
-        stay_month: document.getElementById('set-month') ? document.getElementById('set-month').value : ""
+        stay_year: document.getElementById('set-year')?.value || "",
+        stay_month: document.getElementById('set-month')?.value || ""
     };
 
-    // 2. 依然存一份在本地 localStorage (原本的 v22 版本，當作備份)
+    // 2. 本地備份
     localStorage.setItem('pool_v22', JSON.stringify(pool));
-    localStorage.setItem('activeNurses_v22', JSON.stringify(activeNurses));
     localStorage.setItem('sched_v22', JSON.stringify(schedule));
-    localStorage.setItem('leaves_v22', JSON.stringify(leaves));
-    
-    // 3. 同時存一份「完整包」在本地，方便 load 的時候一次讀取
-    localStorage.setItem('shift_system_full_data', JSON.stringify(allData));
 
-    // 4. 【關鍵】傳送到雲端 Firebase
-    if (window.saveToFirebase) {
-        console.log("正在同步至雲端...");
+    // 3. 靜默上傳 Firebase
+    if (typeof window.saveToFirebase === 'function') {
+        // console.log("雲端自動同步中..."); 
         await window.saveToFirebase(allData);
     }
-}calStorage.setItem('sched_v22', JSON.stringify(schedule)); localStorage.setItem('leaves_v22', JSON.stringify(leaves));
+}
 
 
 // 匯出班表為 CSV 檔案
