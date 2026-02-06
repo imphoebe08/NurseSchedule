@@ -1011,6 +1011,7 @@ function toggleLock(key) {
         lockedCells.push(key); // 鎖定
     }
     localStorage.setItem('locked_v22', JSON.stringify(lockedCells)); // 存檔
+    save();
     renderTable(); // 重畫畫面
 }
 

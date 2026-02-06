@@ -220,15 +220,16 @@
         const db = getFirestore(app);
       
         // 將 Firebase 功能掛載到全域 window 物件，讓 script.js 可以使用
-        window.saveToFirebase = async function(data) {
-          try {
-            // 儲存到名為 "schedules" 集合中，ID 為 "current" 的文件
-            await setDoc(doc(db, "schedules", "current"), data);
-            console.log("Firebase 儲存成功！");
-          } catch (e) {
-            console.error("Firebase 儲存失敗", e);
-          }
-        };
+        window.saveToFirebase = async function(allData) {
+    try {
+        // 確保這裡的集合名稱 "NurseSchedule" 與您在 Firebase 後台建立的一致
+        // 我們將文件 ID 設為 "current"，代表永遠覆蓋成最新狀態
+        await setDoc(doc(db, "NurseSchedule", "current"), allData);
+        // 移除 console.log，讓操作無感
+    } catch (e) {
+        console.error("Firebase 同步錯誤:", e);
+    }
+};
       
         window.loadFromFirebase = async function() {
           const docSnap = await getDoc(doc(db, "schedules", "current"));
