@@ -241,10 +241,24 @@
 
         window.loadFromFirebase = async function(year, month) {
             try {
+<<<<<<< HEAD
                 const docId = `${year}_${month}`;
                 const docSnap = await getDoc(doc(db, "NurseSchedule", docId));
                 return docSnap.exists() ? docSnap.data() : null;
             } catch (e) {
+=======
+                const docRef = doc(db, "NurseSchedule", "current");
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    console.log("從雲端抓到資料了！", docSnap.data());
+                    return docSnap.data();
+                } else {
+                    console.log("雲端沒有資料。");
+                    return null;
+                }
+            } catch (e) {
+                console.error("讀取失敗:", e);
+>>>>>>> parent of 043e187 (修正無法存取資料庫)
                 return null;
             }
 };

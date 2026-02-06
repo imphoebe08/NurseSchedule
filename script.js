@@ -8,6 +8,7 @@ let dateList = [];
 let lockedCells = JSON.parse(localStorage.getItem('locked_v22')) || []; // 記錄鎖定的格子
 
 // 初始化程式：設定預設年月、綁定單選邏輯、啟動日期與表格渲染
+<<<<<<< HEAD
 function init() {
     const now = new Date();
     
@@ -27,10 +28,61 @@ function init() {
     bindCheckboxSingleSelect('.role-checkbox-edit');
     
     // 初始化日期與表格
+=======
+// 注意：前面加上 async
+async function init() {
+    console.log("正在初始化系統並連線雲端...");
+    const now = new Date();
+    
+    // 1. 宣告一個變數來存放抓到的資料
+    let cloudData = null;
+
+    // 2. 嘗試從 Firebase 抓取最新資料
+    if (window.loadFromFirebase) {
+        cloudData = await window.loadFromFirebase();
+    }
+
+    // 3. 設定年份與月份 (優先順序：雲端 > 本地暫存 > 預設)
+    if (cloudData && cloudData.stay_year) {
+        // 如果雲端有資料，直接用雲端的設定
+        document.getElementById('set-year').value = cloudData.stay_year;
+        document.getElementById('set-month').value = cloudData.stay_month;
+        
+        // 同時把雲端的其他資料塞回變數
+        pool = cloudData.pool || [];
+        activeNurses = cloudData.activeNurses || [];
+        schedule = cloudData.schedule || {};
+        leaves = cloudData.leaves || [];
+        window.lockedCells = cloudData.lockedCells || [];
+    } else {
+        // 雲端沒資料才讀本地或預設
+        const savedYear = localStorage.getItem('stay_year');
+        const savedMonth = localStorage.getItem('stay_month');
+        if (savedYear && savedMonth) {
+            document.getElementById('set-year').value = savedYear;
+            document.getElementById('set-month').value = savedMonth;
+        } else {
+            document.getElementById('set-year').value = now.getFullYear();
+            const defaultMonth = (now.getDate() >= 21) ? (now.getMonth() + 2) : (now.getMonth() + 1);
+            document.getElementById('set-month').value = defaultMonth;
+        }
+    }
+    
+    // 4. 綁定按鈕事件 (維持原樣)
+    bindCheckboxSingleSelect('.role-checkbox-new');
+    bindCheckboxSingleSelect('.role-checkbox-edit');
+    
+    // 5. 初始化日期與表格 (這時候變數已經填入雲端資料了)
+>>>>>>> parent of 043e187 (修正無法存取資料庫)
     initDates(); 
     renderPool(); 
     renderTable(); 
     initSortable();
+<<<<<<< HEAD
+=======
+    
+    console.log("雲端資料載入完成！");
+>>>>>>> parent of 043e187 (修正無法存取資料庫)
 }
 
 // 同時修改 initDates，讓它在每次日期變動時記住當下位置
