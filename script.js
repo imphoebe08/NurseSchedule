@@ -17,7 +17,7 @@ async function loadTargetMonth() {
     const year = yEl.value;
     const month = mEl.value;
 
-    // 🔥 儲存目前位置，確保重整後不跳回 3 月
+    // 儲存目前位置，重整不跳掉
     localStorage.setItem('stay_year', year);
     localStorage.setItem('stay_month', month);
 
@@ -27,82 +27,135 @@ async function loadTargetMonth() {
         const data = await window.loadFromFirebase(year, month);
         
         if (data) {
-            console.log("✅ 抓到資料了，正在注入系統...", data);
+            console.log("✅ 抓到雲端資料，正在注入系統...", data);
             
-            // 🔥 對接資料庫欄位 (根據你的截圖，欄位名稱要對準)
-            activeNurses = data.activeNurses || []; 
+            // 🔥 [關鍵就在這] 把雲端的東西塞進變數，這樣重整才不會消失
             schedule = data.schedule || {};
-            pool = data.pool || [];
+            activeNurses = data.activeNurses || [];
+            leaves = data.leaves || [];               // 👈 預假同步關鍵
+            window.lockedCells = data.lockedCells || []; // 👈 鎖定同步關鍵
+            window.currentDeadline = data.deadline || ""; // 👈 放大版 Deadline 置前用
             
-            // 執行渲染 (這裡會自動帶入你的黑色文字與按鈕規範)
-            initDates(); 
-            renderPool();
-            renderTable();
-            if (typeof updateStats === 'function') updateStats();
+            // 如果雲端有存人員名單，也一併更新
+            if (data.pool) pool = data.pool;
         } else {
-            console.log("⚠️ 雲端此月份沒有資料");
-            // 清空當前資料以顯示空白表單
-            activeNurses = [];
+            // 如果這月份沒資料，清空現有班表
+            console.warn("⚠️ 此月份雲端尚無資料");
             schedule = {};
-            initDates();
-            renderTable();
+            activeNurses = [];
+            leaves = [];
+            window.lockedCells = [];
+            window.currentDeadline = "";
         }
+
+        // 注入資料後，立刻重新繪製畫面
+        initDates();
+        renderPool();
+        renderTable(); 
+        if (typeof updateStats === 'function') updateStats();
     }
 }
 
 // 2. 初始化函式
+// script.js 關鍵讀取區
 async function init() {
     console.log("🚀 系統啟動，正在主動抓取全域與月份資料...");
     const yEl = document.getElementById('set-year');
     const mEl = document.getElementById('set-month');
     const now = new Date();
 
-    // A. 恢復上次停留位置 (記憶功能)
+    // 1. 恢復上次停留位置
     yEl.value = localStorage.getItem('stay_year') || now.getFullYear();
-    mEl.value = localStorage.getItem('stay_month') || (now.getDate() >= 21 ? now.getMonth() + 2 : now.getMonth() + 1);
+    mEl.value = localStorage.getItem('stay_month') || (now.getMonth() + 1);
 
-    // B. 強制等待 SDK 就緒
-    while (typeof window.loadGlobalNurses !== 'function') {
+    // 2. 🔥 重要：等待 Firebase SDK 掛載到 window
+    let retry = 0;
+    while (typeof window.loadMonthlyData !== 'function' && retry < 15) {
         await new Promise(r => setTimeout(r, 200));
+        retry++;
     }
 
-    // C. 🔥 主動發動：合併讀取人員與班表
+    // 3. 執行抓取
     await refreshData();
 
-    // D. 綁定選單改動
+    // 4. 綁定選單改動
     yEl.onchange = refreshData;
     mEl.onchange = refreshData;
-    
-    // 其他 UI 綁定
-    if (typeof bindCheckboxSingleSelect === 'function') {
-        bindCheckboxSingleSelect('.role-checkbox-new');
-    }
 }
 
 async function refreshData() {
     const year = document.getElementById('set-year').value;
     const month = document.getElementById('set-month').value;
+    
     localStorage.setItem('stay_year', year);
     localStorage.setItem('stay_month', month);
 
-    // 同時去兩個抽屜拿資料
-    const [globalNurses, monthlyData] = await Promise.all([
-        window.loadGlobalNurses(),
-        window.loadMonthlyData(year, month)
+    const [globalPool, monthlyData] = await Promise.all([
+        window.loadGlobalNurses ? window.loadGlobalNurses() : [],
+        window.loadMonthlyData ? window.loadMonthlyData(year, month) : null
     ]);
 
-    // 💡 困境解決：不管哪個月，人都從全域名單來
-    activeNurses = globalNurses || [];
-    
-    // 班表與排班池從當月資料拿
-    schedule = monthlyData ? (monthlyData.schedule || {}) : {};
-    pool = monthlyData ? (monthlyData.pool || []) : [];
+    // 1. 更新人員池
+    pool = globalPool || [];
 
-    // 渲染畫面：維持純黑文字、Deadline 放大置前、#353866 按鈕
-    initDates();
-    renderPool();
-    renderTable();
-    console.log(`✅ ${year}_${month} 資料載入完成`);
+    // 2. 🏆 從雲端還原所有班表細節
+    if (monthlyData) {
+        activeNurses = monthlyData.activeNurses || [];
+        schedule = monthlyData.schedule || {};
+        leaves = monthlyData.leaves || [];
+        window.lockedCells = monthlyData.lockedCells || [];
+        window.currentDeadline = monthlyData.deadline || ""; // 讀取 Deadline
+    } else {
+        // 若該月無資料，則初始化
+        activeNurses = [];
+        schedule = {};
+        leaves = [];
+        window.lockedCells = [];
+        window.currentDeadline = "";
+    }
+
+    // 3. 渲染
+    initDates();    
+    renderPool();   
+    renderTable();  
+    if (typeof updateStats === 'function') updateStats();
+    
+    console.log(`✅ ${year}_${month} 資料已從雲端完全同步`);
+}
+
+async function refreshData() {
+    const year = document.getElementById('set-year').value;
+    const month = document.getElementById('set-month').value;
+    
+    // 1. 記憶目前位置 (重整不跳掉)
+    localStorage.setItem('stay_year', year);
+    localStorage.setItem('stay_month', month);
+
+    // 2. 同時抓取兩份資料
+    const [globalPool, monthlyData] = await Promise.all([
+        window.loadGlobalNurses ? window.loadGlobalNurses() : [],
+        window.loadMonthlyData ? window.loadMonthlyData(year, month) : null
+    ]);
+
+    // 🏆【核心改動】人員清單獨立：
+    // pool 永遠抓全域的 (Settings/NurseList)，這樣你在哪個月都能看到所有人
+    pool = globalPool || [];
+
+    // 📅 班表資料維持原樣：
+    // activeNurses 只抓當月 (NurseSchedule/年月) 已經加入班表的人
+    activeNurses = monthlyData ? (monthlyData.activeNurses || []) : [];
+    schedule = monthlyData ? (monthlyData.schedule || {}) : {};
+    
+    // 這裡要補上你原本可能有的其他資料，例如預假
+    leaves = monthlyData ? (monthlyData.leaves || []) : [];
+    window.lockedCells = monthlyData ? (monthlyData.lockedCells || []) : [];
+
+    // 3. 渲染畫面 (維持你的 UI 規範)
+    initDates();    // 重新產生日期
+    renderPool();   // 更新左側人員清單
+    renderTable();  // 更新班表表格 (文字純黑、Deadline 放大置前)
+    
+    console.log(`✅ ${year}_${month} 資料同步完成`);
 }
 
 // 同時修改 initDates，讓它在每次日期變動時記住當下位置
@@ -832,13 +885,29 @@ function updateStats() {
 }
 
 // 新增人員到總名單
-function addNurse() {
-    const name = document.getElementById('n-name').value; if (!name) return;
+async function addNurse() { // 加入 async
+    const name = document.getElementById('n-name').value; 
+    if (!name) return;
+    
     let nurse = { id: Date.now(), name, isLeader: false, isIntern: false, isUnready: false, isSupport: false };
-    document.querySelectorAll('.role-checkbox-new').forEach(box => { if(box.checked) nurse[box.dataset.role] = true; });
-    pool.push(nurse); document.getElementById('n-name').value = ''; 
-    save(); renderPool();
+    document.querySelectorAll('.role-checkbox-new').forEach(box => { 
+        if(box.checked) nurse[box.dataset.role] = true; 
+    });
+    
+    pool.push(nurse); 
+    document.getElementById('n-name').value = ''; 
+    
+    // 🔥 儲存到本地
+    save(); 
+    
+    // 🔥 同步到雲端全域名單 (Settings/NurseList)
+    if (window.saveGlobalNurses) {
+        await window.saveGlobalNurses(pool); 
+    }
+    
+    renderPool();
 }
+
 
 // 渲染人員名單顯示
 function renderPool() {
@@ -885,13 +954,25 @@ function openEdit(id) {
 }
 
 // 儲存編輯後的人員資料
-function saveEdit() {
+async function saveEdit() {
     const id = parseInt(document.getElementById('edit-id').value);
     const idx = pool.findIndex(x => x.id === id);
     pool[idx].name = document.getElementById('edit-name').value;
     document.querySelectorAll('.role-checkbox-edit').forEach(box => pool[idx][box.dataset.role] = box.checked);
-    const aIdx = activeNurses.findIndex(x => x.id === id); if (aIdx !== -1) activeNurses[aIdx] = JSON.parse(JSON.stringify(pool[idx]));
-    save(); renderPool(); renderTable(); closeEdit();
+    
+    const aIdx = activeNurses.findIndex(x => x.id === id); 
+    if (aIdx !== -1) activeNurses[aIdx] = JSON.parse(JSON.stringify(pool[idx]));
+    
+    save(); 
+    
+    // 🔥 同步編輯後的名單到全域
+    if (window.saveGlobalNurses) {
+        await window.saveGlobalNurses(pool);
+    }
+    
+    renderPool(); 
+    renderTable(); 
+    closeEdit();
 }
 
 // 產生人員稱謂標籤 (L, 實, 支等)
@@ -907,44 +988,116 @@ function getNameTag(n) {
 // 關閉編輯視窗、從班表移除人員、徹底刪除人員、預假切換、存檔邏輯等
 function closeEdit() { document.getElementById('editModal').style.display = 'none'; }
 function removeFromActive(id) { activeNurses = activeNurses.filter(n => n.id !== id); save(); renderPool(); renderTable(); }
-function removeNurse(id) { if(confirm('徹底刪除人員？')) { pool = pool.filter(x => x.id !== id); activeNurses = activeNurses.filter(x => x.id !== id); save(); renderPool(); renderTable(); } }
-function toggleLeave(key) {
+async function removeNurse(id) { 
+    if(confirm('徹底刪除人員？')) { 
+        pool = pool.filter(x => x.id !== id); 
+        activeNurses = activeNurses.filter(x => x.id !== id); 
+        
+        save(); 
+        
+        // 🔥 同步刪除雲端全域名單
+        if (window.saveGlobalNurses) {
+            await window.saveGlobalNurses(pool);
+        }
+        
+        renderPool(); 
+        renderTable(); 
+    } 
+}
+async function toggleLeave(key) {
+    // 1. 先處理資料邏輯
     const i = leaves.indexOf(key);
     if (i > -1) {
-        leaves.splice(i, 1); // 存在就移除 (取消預假)
+        leaves.splice(i, 1);
     } else {
-        leaves.push(key);    // 不存在就加入 (設定預假)
+        leaves.push(key);
     }
-    save();
-    renderTable(); // 重新渲染畫面
-}
-function toggleMode() { isLeaveMode = !isLeaveMode; document.getElementById('mode-btn').innerText = isLeaveMode ? "完成預假" : "進入預假模式"; renderTable(); }
 
-// 存檔到 localStorage
+    // 2. 儲存到本地端 (LocalStorage)
+    save();
+
+    // 3. 🔥【這是關鍵】手動推送到雲端
+    const year = document.getElementById('set-year').value;
+    const month = document.getElementById('set-month').value;
+
+    if (window.saveToFirebase) {
+        // 這裡要把所有東西包起來，不然雲端會漏掉其他欄位
+        const dataToSave = {
+            schedule: schedule,
+            activeNurses: activeNurses,
+            pool: pool,
+            leaves: leaves,  // 👈 這次變動的主角
+            deadline: window.currentDeadline || ""
+        };
+        
+        await window.saveToFirebase(dataToSave, year, month);
+        console.log("✅ 預假資料已同步至雲端");
+    }
+
+    // 4. 最後才渲染畫面
+    renderTable(); 
+}
+
+async function toggleMode() {
+    // 1. 切換模式狀態
+    isLeaveMode = !isLeaveMode; 
+    
+    // 2. 更新按鈕文字
+    const btn = document.getElementById('mode-btn');
+    btn.innerText = isLeaveMode ? "完成預假" : "進入預假模式";
+
+    // 3. 🔥【關鍵】當使用者點擊「完成預假」時，立刻同步到雲端
+    if (!isLeaveMode) { // 如果現在是從預假模式「退出」
+        console.log("正在同步預假資料至雲端...");
+        
+        const year = document.getElementById('set-year').value;
+        const month = document.getElementById('set-month').value;
+
+        if (window.saveToFirebase) {
+            const allData = {
+                schedule: schedule,
+                activeNurses: activeNurses,
+                pool: pool,
+                leaves: leaves,          // 確保這份清單被送出去
+                lockedCells: window.lockedCells || [],
+                deadline: window.currentDeadline || ""
+            };
+            await window.saveToFirebase(allData, year, month);
+            console.log("✅ 預假資料同步完成");
+        }
+    }
+
+    // 4. 重新渲染畫面
+    renderTable(); 
+}
+
+// 存檔到firebase資料庫
 async function save() {
-    // 取得元素
     const yEl = document.getElementById('set-year');
     const mEl = document.getElementById('set-month');
-
-    // 如果抓不到元素，就用當前日期當保險，絕對不傳 undefined
     const year = yEl ? yEl.value : new Date().getFullYear().toString();
     const month = mEl ? mEl.value : (new Date().getMonth() + 1).toString();
 
-    console.log(`準備儲存到路徑：${year}_${month}`);
-
+    // 🏆 打包所有狀態，確保資料完整
     const allData = {
         pool: pool,
         activeNurses: activeNurses,
         schedule: schedule,
         leaves: leaves,
         lockedCells: window.lockedCells || [],
+        deadline: window.currentDeadline || "", // 確保 Deadline 同步
         stay_year: year,
         stay_month: month
     };
 
+    console.log(`📡 同步資料至雲端：${year}_${month}`, allData);
+
     if (window.saveToFirebase) {
         await window.saveToFirebase(allData, year, month);
     }
+    
+    // 同步存一份到 LocalStorage 當備援
+    localStorage.setItem('shift_system_data_backup', JSON.stringify(allData));
 }
 
 
@@ -1223,19 +1376,20 @@ function checkRules(nurseId, dateStr) {
 }
 
 //同步至雲端資料庫（firebase)
-async function syncData() {
+async function syncData() { // 或是叫 save()
     const allData = {
-        schedule: schedule,
-        lockedCells: window.lockedCells || [],
-        activeNurses: activeNurses,
-        leaves: leaves || [],
-        stay_year: document.getElementById('set-year').value,
-        stay_month: document.getElementById('set-month').value
+        schedule,
+        activeNurses,
+        pool,
+        leaves,         // 👈 沒這行，預假存不進去
+        lockedCells: window.lockedCells, // 👈 沒這行，鎖定存不進去
+        deadline: window.currentDeadline
     };
-    
-    localStorage.setItem('shift_system_data', JSON.stringify(allData));
+    const year = document.getElementById('set-year').value;
+    const month = document.getElementById('set-month').value;
+
     if (window.saveToFirebase) {
-        await window.saveToFirebase(allData);
+        await window.saveToFirebase(allData, year, month);
     }
 }
 

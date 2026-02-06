@@ -258,32 +258,31 @@
     }
 };
 
-        window.saveToFirebase = async function(allData, year, month) {
-            try {
-                const docId = `${String(year)}_${String(month)}`;
-                
-                // 🔥 這裡非常重要：確保匯入的資料包含這幾項關鍵欄位
-                // 這樣重整後 renderTable() 才抓得到東西
-                await setDoc(doc(db, "NurseSchedule", docId), {
-                    schedule: allData.schedule || {},
-                    activeNurses: allData.activeNurses || [],
-                    pool: allData.pool || [],
-                    deadline: allData.deadline || "", // 確保你的放大版 Deadline 有被存進去
-                    lastUpdated: new Date().toISOString()
-                });
-                
-                console.log(`✅ ${docId} 班表已成功同步至雲端`);
-                
-                // 💡 額外動作：如果匯入資料裡有新名單，順便更新「全域抽屜」
-                if (allData.activeNurses && window.saveGlobalNurses) {
-                    await window.saveGlobalNurses(allData.activeNurses);
-                }
-                
-            } catch (e) {
-                console.error("❌ 儲存至 Firebase 失敗:", e);
-                alert("雲端儲存失敗，請檢查網路！");
-            }
-        };
+window.saveToFirebase = async function(allData, year, month) {
+    try {
+        const docId = `${String(year)}_${String(month)}`;
+        
+        // 🔥 關鍵修正：必須包含 leaves 和 lockedCells
+        await setDoc(doc(db, "NurseSchedule", docId), {
+            schedule: allData.schedule || {},
+            activeNurses: allData.activeNurses || [],
+            pool: allData.pool || [],
+            leaves: allData.leaves || [],           // 👈 沒存這個，預假重整就沒了
+            lockedCells: allData.lockedCells || [], // 👈 沒存這個，鎖定重整就開了
+            deadline: allData.deadline || "",       // 👈 放大版 Deadline
+            lastUpdated: new Date().toISOString()
+        });
+        
+        console.log(`✅ ${docId} 資料已完整同步至雲端 (含預假與鎖定)`);
+        
+        if (allData.activeNurses && window.saveGlobalNurses) {
+            await window.saveGlobalNurses(allData.activeNurses);
+        }
+        
+    } catch (e) {
+        console.error("❌ 儲存失敗:", e);
+    }
+};
     
         // 啟動主程式
         if (typeof init === 'function') {
