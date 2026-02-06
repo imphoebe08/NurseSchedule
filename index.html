@@ -239,37 +239,31 @@
             }
         };
 
-        window.loadFromFirebase = async function(year, month) {
-    try {
-        // 根據你選取的年月動態讀取
-        const docId = `${year}_${month}`;
-        console.log("正在嘗試讀取路徑：", docId);
-        
-        const docRef = doc(db, "NurseSchedule", docId);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-            console.log(`✅ 已從雲端抓到 ${docId} 的資料`);
-            return docSnap.data();
-        } else {
-            console.log(`ℹ️ 雲端路徑 ${docId} 目前沒有資料`);
-            return null;
-        }
-    } catch (e) {
-        console.error("❌ 讀取發生報錯:", e);
-        return null;
-    }
-};
+       // 雲端儲存：將整個月的資料存入對應的年月文件
+        window.saveToFirebase = async function(allData, year, month) {
+            try {
+                const docId = `${year}_${month}`; // 例如 "2026_5"
+                await setDoc(doc(db, "Schedules", docId), {
+                    ...allData,
+                    lastUpdated: new Date().toISOString()
+                });
+                console.log(`✅ 成功同步至雲端：${docId}`);
+            } catch (e) {
+                console.error("❌ 儲存失敗:", e);
+            }
+        };
 
-window.saveToFirebase = async function(allData, year, month) {
-    try {
-        const docId = `${year}_${month}`;
-        await setDoc(doc(db, "NurseSchedule", docId), allData);
-        console.log(`✅ 已成功儲存至月份：${docId}`);
-    } catch (e) {
-        console.error("❌ 儲存發生報錯:", e);
-    }
-};
+// 雲端讀取：根據當前選單的年月抓取
+        window.loadFromFirebase = async function(year, month) {
+            try {
+                const docId = `${year}_${month}`;
+                const docSnap = await getDoc(doc(db, "Schedules", docId));
+                return docSnap.exists() ? docSnap.data() : null;
+            } catch (e) {
+                console.error("❌ 讀取失敗:", e);
+                return null;
+            }
+        };
       </script>
 </body>
 </html>
