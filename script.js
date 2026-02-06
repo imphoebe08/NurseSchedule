@@ -850,13 +850,15 @@ function toggleMode() { isLeaveMode = !isLeaveMode; document.getElementById('mod
 
 // 存檔到 localStorage
 async function save() {
-    // 檢查元素是否存在，若不存在則給予預設值
-    const yearEl = document.getElementById('set-year');
-    const monthEl = document.getElementById('set-month');
-    
-    // 如果抓不到畫面的值，就用當下的日期
-    const year = yearEl ? yearEl.value : new Date().getFullYear().toString();
-    const month = monthEl ? monthEl.value : (new Date().getMonth() + 1).toString();
+    // 取得元素
+    const yEl = document.getElementById('set-year');
+    const mEl = document.getElementById('set-month');
+
+    // 如果抓不到元素，就用當前日期當保險，絕對不傳 undefined
+    const year = yEl ? yEl.value : new Date().getFullYear().toString();
+    const month = mEl ? mEl.value : (new Date().getMonth() + 1).toString();
+
+    console.log(`準備儲存到路徑：${year}_${month}`);
 
     const allData = {
         pool: pool,
@@ -869,7 +871,6 @@ async function save() {
     };
 
     if (window.saveToFirebase) {
-        // 這樣就不會再出現 undefined_undefined 了
         await window.saveToFirebase(allData, year, month);
     }
 }
@@ -1138,5 +1139,60 @@ async function syncData() {
     localStorage.setItem('shift_system_data', JSON.stringify(allData));
     if (window.saveToFirebase) {
         await window.saveToFirebase(allData);
+    }
+}
+
+function setupMonthListeners() {
+    const yearSelect = document.getElementById('set-year');
+    const monthSelect = document.getElementById('set-month');
+
+    if (yearSelect && monthSelect) {
+        // 當年份改變時
+        yearSelect.addEventListener('change', async () => {
+            console.log("年份變更，重新讀取資料...");
+            await loadTargetMonth(); // 執行你寫好的讀取函式
+        });
+
+        // 當月份改變時
+        monthSelect.addEventListener('change', async () => {
+            console.log("月份變更，重新讀取資料...");
+            await loadTargetMonth(); // 執行你寫好的讀取函式
+        });
+    }
+}
+
+async function loadTargetMonth() {
+    const year = document.getElementById('set-year').value;
+    const month = document.getElementById('set-month').value;
+    
+    // 顯示載入中狀態（可選）
+    console.log(`正在切換至 ${year}年 ${month}月...`);
+
+    if (window.loadFromFirebase) {
+        const data = await window.loadFromFirebase(year, month);
+        
+        if (data) {
+            // 1. 抓到資料：更新變數
+            schedule = data.schedule || {};
+            pool = data.pool || pool; // 保持人員名單連動
+            activeNurses = data.activeNurses || [];
+            window.lockedCells = data.lockedCells || [];
+            
+            // 2. 重新初始化日期 (這步很重要，天數才會變)
+            initDates(); 
+            
+            // 3. 重新渲染畫面 (維持純黑文字規範)
+            renderPool();
+            renderTable();
+            updateStats();
+            console.log("✅ 資料已同步更新");
+        } else {
+            // 4. 沒資料：代表是新月份，清空畫面準備排新班
+            console.warn("此月份尚無資料，顯示空白表單");
+            schedule = {};
+            initDates();
+            renderTable();
+            updateStats();
+        }
     }
 }
