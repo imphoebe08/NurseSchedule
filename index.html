@@ -227,31 +227,27 @@
                 window.firebaseReady = true;
         }
         // 將 Firebase 功能掛載到全域 window 物件，讓 script.js 可以使用
-        window.saveToFirebase = async function(allData) {
+        // 在 index.html 修改這兩個函式
+        window.saveToFirebase = async function(allData, year, month) {
             try {
-                // 第一個參數是 db，第二個是 "集合名稱"，第三個是 "文件名稱"
-                // 確保這裡寫的是 "NurseSchedule"，不是其他的
-                await setDoc(doc(db, "NurseSchedule", "current"), allData);
-                console.log("資料已傳送至 NurseSchedule 集合"); 
+                // 動態路徑：例如 NurseSchedule/2026_3
+                const docId = `${year}_${month}`;
+                await setDoc(doc(db, "NurseSchedule", docId), allData);
+                console.log(`✅ ${docId} 資料已同步`);
             } catch (e) {
-                console.error("傳送發生錯誤:", e);
+                console.error("同步失敗:", e);
             }
         };
-      
-        window.loadFromFirebase = async function() {
+
+        window.loadFromFirebase = async function(year, month) {
             try {
-                // 確保路徑與你 save 時一模一樣
-                const docRef = doc(db, "NurseSchedule", "current");
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    return docSnap.data();
-                }
-                return null;
+                const docId = `${year}_${month}`;
+                const docSnap = await getDoc(doc(db, "NurseSchedule", docId));
+                return docSnap.exists() ? docSnap.data() : null;
             } catch (e) {
-                console.error("Firebase 讀取報錯:", e);
                 return null;
             }
-        };
+};
       </script>
 </body>
 </html>

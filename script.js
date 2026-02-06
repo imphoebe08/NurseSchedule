@@ -8,39 +8,29 @@ let dateList = [];
 let lockedCells = JSON.parse(localStorage.getItem('locked_v22')) || []; // 記錄鎖定的格子
 
 // 初始化程式：設定預設年月、綁定單選邏輯、啟動日期與表格渲染
-// 注意：前面加上 async
-async function init() {
-    console.log("開始初始化...");
+function init() {
+    const now = new Date();
     
-    if (window.loadFromFirebase) {
-        const cloudData = await window.loadFromFirebase();
-        console.log("從雲端抓取的原始資料:", cloudData); // 這裡一定要在 Console 看到東西
+    // --- 修正處：優先讀取暫存的年月，沒有才用預設 ---
+    const savedYear = localStorage.getItem('stay_year');
+    const savedMonth = localStorage.getItem('stay_month');
 
-        if (cloudData) {
-            // 強制覆蓋全域變數
-            pool = cloudData.pool || [];
-            activeNurses = cloudData.activeNurses || [];
-            schedule = cloudData.schedule || {};
-            leaves = cloudData.leaves || [];
-            window.lockedCells = cloudData.lockedCells || [];
-
-            // 設定年月
-            if (cloudData.stay_year) document.getElementById('set-year').value = cloudData.stay_year;
-            if (cloudData.stay_month) document.getElementById('set-month').value = cloudData.stay_month;
-            
-            console.log("全域變數已更新:", {pool, schedule});
-        }
+    if (savedYear && savedMonth) {
+        document.getElementById('set-year').value = savedYear;
+        document.getElementById('set-month').value = savedMonth;
+    } else {
+        document.getElementById('set-year').value = now.getFullYear();
+        document.getElementById('set-month').value = (now.getDate() >= 21) ? (now.getMonth() + 2) : (now.getMonth() + 1);
     }
-
-    // 執行完資料注入後，才跑原本的初始化邏輯
+    
     bindCheckboxSingleSelect('.role-checkbox-new');
     bindCheckboxSingleSelect('.role-checkbox-edit');
     
-    initDates();   // 計算日期
-    renderPool();  // 畫人員
-    renderTable(); // 畫班表
-    updateStats(); // 畫統計 (確保紅框出現)
-    if (typeof initSortable === 'function') initSortable();
+    // 初始化日期與表格
+    initDates(); 
+    renderPool(); 
+    renderTable(); 
+    initSortable();
 }
 
 // 同時修改 initDates，讓它在每次日期變動時記住當下位置
@@ -860,25 +850,27 @@ function toggleMode() { isLeaveMode = !isLeaveMode; document.getElementById('mod
 
 // 存檔到 localStorage
 async function save() {
-    // 1. 打包最新資料
+    // 檢查元素是否存在，若不存在則給予預設值
+    const yearEl = document.getElementById('set-year');
+    const monthEl = document.getElementById('set-month');
+    
+    // 如果抓不到畫面的值，就用當下的日期
+    const year = yearEl ? yearEl.value : new Date().getFullYear().toString();
+    const month = monthEl ? monthEl.value : (new Date().getMonth() + 1).toString();
+
     const allData = {
         pool: pool,
         activeNurses: activeNurses,
         schedule: schedule,
         leaves: leaves,
         lockedCells: window.lockedCells || [],
-        stay_year: document.getElementById('set-year')?.value || "",
-        stay_month: document.getElementById('set-month')?.value || ""
+        stay_year: year,
+        stay_month: month
     };
 
-    // 2. 本地備份
-    localStorage.setItem('pool_v22', JSON.stringify(pool));
-    localStorage.setItem('sched_v22', JSON.stringify(schedule));
-
-    // 3. 靜默上傳 Firebase
-    if (typeof window.saveToFirebase === 'function') {
-        // console.log("雲端自動同步中..."); 
-        await window.saveToFirebase(allData);
+    if (window.saveToFirebase) {
+        // 這樣就不會再出現 undefined_undefined 了
+        await window.saveToFirebase(allData, year, month);
     }
 }
 
@@ -1148,18 +1140,3 @@ async function syncData() {
         await window.saveToFirebase(allData);
     }
 }
-
-// 在 script.js 最下方
-function checkInit() {
-    // 檢查 Firebase SDK 是否已經掛載好讀取函式
-    if (window.loadFromFirebase || window.firebaseReady) {
-        init();
-    } else {
-        // 如果還沒好，等 100 毫秒再檢查一次
-        console.log("等待 Firebase SDK...");
-        setTimeout(checkInit, 100);
-    }
-}
-
-// 啟動檢查機制
-checkInit();
