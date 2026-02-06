@@ -166,24 +166,6 @@
         <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold text-slate-800">📅 本月班表 (<span id="range-text"></span>)</h2>
-                <div class="md:hidden bg-white p-4 rounded-xl shadow-lg border border-slate-200 mb-4 mobile-only-controls">
-                    <div id="deadline-mobile-box" class="mb-4"></div>
-                
-                    <div class="grid grid-cols-2 gap-2 mb-3">
-                        <button onclick="autoFillSmart()" class="bg-emerald-600 text-white py-3 rounded-lg font-bold text-sm">🪄 一鍵排班</button>
-                        <button onclick="toggleMode()" id="mode-btn-mob" class="bg-rose-500 text-white py-3 rounded-lg font-bold text-sm">進入預假模式</button>
-                        <button onclick="save()" class="bg-indigo-600 text-white py-3 rounded-lg font-bold text-sm col-span-2">同步雲端資料</button>
-                    </div>
-                
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="exportToXls()" class="bg-blue-600 text-white py-2 rounded-lg text-xs font-bold">📥 匯出Excel</button>
-                        <button onclick="document.getElementById('importFile').click()" class="bg-slate-500 text-white py-2 rounded-lg text-xs font-bold">匯入班表</button>
-                    </div>
-                </div>
-                
-                <div id="desktop-header-area" class="hidden md:block bg-white p-6 rounded-xl shadow-lg border border-slate-200">
-                    </div>
-                <!-- 電腦板專用按鈕 -->
                 <div class="flex gap-2">
                     <button onclick="autoFillSmart()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-emerald-700 transition">🪄 一鍵排班</button>
                     <button onclick="toggleMode()" id="mode-btn" class="bg-rose-500 text-white px-4 py-2 rounded-lg font-bold">進入預假模式</button>
