@@ -219,6 +219,13 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
       
+        console.log("Firebase SDK 就緒");
+            if (typeof init === 'function') {
+                init(); 
+            } else {
+                // 如果 script.js 載入較慢，就掛載到 window 等待
+                window.firebaseReady = true;
+        }
         // 將 Firebase 功能掛載到全域 window 物件，讓 script.js 可以使用
         window.saveToFirebase = async function(allData) {
             try {

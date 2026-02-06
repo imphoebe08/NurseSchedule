@@ -1148,3 +1148,18 @@ async function syncData() {
         await window.saveToFirebase(allData);
     }
 }
+
+// 在 script.js 最下方
+function checkInit() {
+    // 檢查 Firebase SDK 是否已經掛載好讀取函式
+    if (window.loadFromFirebase || window.firebaseReady) {
+        init();
+    } else {
+        // 如果還沒好，等 100 毫秒再檢查一次
+        console.log("等待 Firebase SDK...");
+        setTimeout(checkInit, 100);
+    }
+}
+
+// 啟動檢查機制
+checkInit();
