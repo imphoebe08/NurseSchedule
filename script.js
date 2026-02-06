@@ -1078,26 +1078,20 @@ async function save() {
     const year = yEl ? yEl.value : new Date().getFullYear().toString();
     const month = mEl ? mEl.value : (new Date().getMonth() + 1).toString();
 
-    // 🏆 打包所有狀態，確保資料完整
     const allData = {
         pool: pool,
         activeNurses: activeNurses,
         schedule: schedule,
-        leaves: leaves,
-        lockedCells: window.lockedCells || [],
-        deadline: window.currentDeadline || "", // 確保 Deadline 同步
+        leaves: leaves,                  // 👈 補上這行，預假才不會重整消失
+        lockedCells: window.lockedCells || [], // 👈 補上這行，鎖定才不會重整消失
+        deadline: window.currentDeadline || "",
         stay_year: year,
         stay_month: month
     };
 
-    console.log(`📡 同步資料至雲端：${year}_${month}`, allData);
-
     if (window.saveToFirebase) {
         await window.saveToFirebase(allData, year, month);
     }
-    
-    // 同步存一份到 LocalStorage 當備援
-    localStorage.setItem('shift_system_data_backup', JSON.stringify(allData));
 }
 
 
